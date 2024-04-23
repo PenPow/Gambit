@@ -1,0 +1,16 @@
+[package]
+name = "gambit"
+description = "A chess engine implemented in Rust"
+authors = ["Joshua Clements <josh@penpow.dev>"]
+
+version = "0.0.0"
+edition = "2021"
+
+repository = "https://github.com/PenPow/Gambit"
+license = "Apache-2.0"
+
+keywords = ["chess", "chess-engine"]
+categories = ["mathematics"]
+
+
+[dependencies]
