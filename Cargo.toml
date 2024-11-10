@@ -3,7 +3,7 @@ name = "gambit"
 description = "A chess engine implemented in Rust"
 authors = ["Joshua Clements <josh@penpow.dev>"]
 
-version = "0.0.0"
+version = "0.0.1"
 edition = "2021"
 
 repository = "https://github.com/PenPow/Gambit"
@@ -12,5 +12,19 @@ license = "Apache-2.0"
 keywords = ["chess", "chess-engine"]
 categories = ["mathematics"]
 
+# [profile.release]
+# opt-level = 3 # TODO: See if optimisation lvl 2 or 3 is faster
+# debug = false
+# debug-assertions = false
+# rpath = false
+# codegen-units = 1
+# lto = true
+# overflow-checks = false
+# target-cpu = "native"
 
 [dependencies]
+arrayvec = "0.7.6"
+colored = "2.1.0"
+
+# TODO: Replace with std lib
+crossbeam-channel = "0.5.13"
