@@ -1,6 +1,16 @@
 {
 	"cSpell.words": [
+		"arrayvec",
 		"Bitboard",
-		"setwise"
+		"bitboards",
+		"bitflags",
+		"fullmove",
+		"fullmoves",
+		"halfmove",
+		"halfmoves",
+		"repr",
+		"rustdoc",
+		"setwise",
+		"zobrist"
 	],
 }
