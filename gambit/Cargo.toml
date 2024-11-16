@@ -16,3 +16,4 @@ categories = ["mathematics"]
 [dependencies]
 colored = "2.1.0"
 bitflags = "2.6.0"
+arrayvec = "0.7.6"

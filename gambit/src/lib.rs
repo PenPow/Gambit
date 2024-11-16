@@ -10,5 +10,6 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub mod bitboard;
 pub mod location;
 pub mod piece;
+pub mod board;
 
 mod enums;
