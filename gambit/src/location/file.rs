@@ -15,7 +15,7 @@ impl std::error::Error for ParseFileError {}
 
 /// Represents a file (column) on a chessboard, ranging from [`File::A`] to [`File::H`].
 #[allow(missing_docs)]
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 #[repr(u8)]
 pub enum File {
 	A,
@@ -115,6 +115,12 @@ impl File {
 }
 
 impl std::fmt::Display for File {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.write_char(self.as_uppercase_char())
+	}
+}
+
+impl std::fmt::Debug for File {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.write_char(self.as_uppercase_char())
 	}

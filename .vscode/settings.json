@@ -4,6 +4,7 @@
 		"Bitboard",
 		"bitboards",
 		"bitflags",
+		"bools",
 		"fullmove",
 		"fullmoves",
 		"halfmove",

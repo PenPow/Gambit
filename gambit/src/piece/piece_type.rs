@@ -1,5 +1,4 @@
-use std::fmt::Write;
-
+use std::fmt::{self, Write};
 use crate::enums::impl_enum_to_int;
 
 /// Error thrown when parsing an invalid piece character
@@ -120,6 +119,52 @@ impl PieceType {
             PieceType::King => 'K',
 			PieceType::None => ' ',
         }
+	}
+
+	/// Converts the [`PieceType`] to its name.
+	#[inline]
+	#[must_use]
+	pub const fn as_str(self) -> &'static str {
+		match self {
+            PieceType::Pawn => "Pawn",
+            PieceType::Knight => "Knight",
+            PieceType::Bishop => "Bishop",
+            PieceType::Rook => "Rook",
+            PieceType::Queen => "Queen",
+            PieceType::King => "King",
+			PieceType::None => "None",
+        }
+	}
+
+	/// Converts the [`PieceType`] to a [`u8`].
+	#[inline]
+	#[must_use]
+	pub const fn bits(self) -> u8 {
+		self as u8
+	}
+}
+
+impl fmt::UpperHex for PieceType {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		fmt::UpperHex::fmt(&self.bits(), f)
+	}
+}
+
+impl fmt::LowerHex for PieceType {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		fmt::LowerHex::fmt(&self.bits(), f)
+	}
+}
+
+impl fmt::Octal for PieceType {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		fmt::Octal::fmt(&self.bits(), f)
+	}
+}
+
+impl fmt::Binary for PieceType {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		fmt::Binary::fmt(&self.bits(), f)
 	}
 }
 
