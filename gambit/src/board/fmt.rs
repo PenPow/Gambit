@@ -23,7 +23,7 @@ impl Board {
 
 		writeln!(f, "Combined \n{}", self.occupancy())?;
 
-		// writeln!(f, "Zobrist Key: {}", self.state.zobrist_key)?;
+		writeln!(f, "Zobrist Key: {}", self.state.zobrist_key)?;
 		writeln!(f, "Side to Move: {}", self.state.active_colour.as_char())?;
 		writeln!(f, "En Passant Square: {}", if let Some(square) = self.state.en_passant_square { square.as_str() } else { String::from("-") })?;
 		writeln!(f, "Castling Availability: {:b} (qkQK)", self.state.castling_availability)?;

@@ -1,6 +1,6 @@
 use arrayvec::ArrayVec;
 use crate::{bitboard::Bitboard, location::Square, piece::{Castling, Colour, PieceType}};
-use super::fen::{Fen, FenError, FenParser};
+use super::{fen::{Fen, FenError, FenParser}, zobrist::{ZobristRandom, ZOBRIST_CASTLING_RANDOMS, ZOBRIST_EN_PASSANT_RANDOMS, ZOBRIST_PIECE_RANDOMS, ZOBRIST_SIDE_RANDOM}};
 
 /// A struct containing the current game state
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -19,6 +19,9 @@ pub struct State {
 
 	/// The ability to castle, stored in the bits of [`Castling`]
 	pub castling_availability: Castling,
+	
+	/// The zobrist key for the board
+	pub zobrist_key: ZobristRandom
 }
 
 /// Represents the game board
@@ -69,6 +72,7 @@ impl Board {
 				en_passant_square: parser.parse_en_passant_square()?,
 				halfmove_clock: parser.parse_halfmove_clock()?,
 				fullmove_number: parser.parse_fullmove_number()?,
+				zobrist_key: 0,
 			},
 			history: ArrayVec::new(),
 			
@@ -77,6 +81,28 @@ impl Board {
 		};
 
 		parser.parse_piece_placement(&mut board.piece_bitboards, &mut board.side_bitboards)?;
+
+		for (colour, colour_array) in board.piece_bitboards.iter().enumerate() {
+			for (piece_type, bitboard) in colour_array.iter().enumerate() {
+				let bitboard = *bitboard;
+
+				for square in bitboard {
+					board.state.zobrist_key ^= ZOBRIST_PIECE_RANDOMS[colour][piece_type][square as usize];
+				}
+			}
+		}
+
+		if board.state.active_colour == Colour::Black {
+			board.state.zobrist_key ^= ZOBRIST_SIDE_RANDOM;
+		}
+
+		board.state.zobrist_key ^= ZOBRIST_CASTLING_RANDOMS[board.state.castling_availability.bits() as usize];
+
+		if let Some(square) = board.state.en_passant_square {
+			let file = square.file();
+
+			board.state.zobrist_key ^= ZOBRIST_EN_PASSANT_RANDOMS[file as usize];
+		}
 
 		Ok(board)
 	}

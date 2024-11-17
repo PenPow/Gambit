@@ -3,6 +3,8 @@ name = "gambit"
 description = "The internal helpers for building a chess engine in rust"
 authors = ["Joshua Clements <josh@penpow.dev>"]
 
+build = "build.rs"
+
 version = "0.0.1"
 edition = "2021"
 
@@ -17,3 +19,7 @@ categories = ["mathematics"]
 colored = "2.1.0"
 bitflags = "2.6.0"
 arrayvec = "0.7.6"
+
+[build-dependencies]
+rand = "0.8"
+rand_pcg = "0.3"

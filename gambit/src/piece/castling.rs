@@ -171,6 +171,11 @@ bitflags! {
 	}
 }
 
+impl CastlingPermissions {
+	/// The number of unique castling combinations
+	pub const COUNT: usize = 2usize.pow(4);
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;

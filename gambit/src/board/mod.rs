@@ -2,6 +2,7 @@
 
 pub mod fen;
 pub mod moves;
+pub mod zobrist;
 
 mod core;
 mod fmt;
