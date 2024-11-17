@@ -2,7 +2,7 @@
 #![warn(missing_docs, rustdoc::missing_crate_level_docs, rustdoc::unescaped_backticks)]
 #![allow(clippy::inline_always, clippy::cast_possible_truncation)]
 
-#![doc = include_str!("../README.md")]
+#![doc = include_str!(concat!("../", env!("CARGO_PKG_README")))]
 
 /// The current version of the crate
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
