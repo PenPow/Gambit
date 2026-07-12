@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 use std::hash::{BuildHasherDefault, Hasher};
 
+// TODO:
+// Determine whether this is providing an ELO boost or not
+
 #[derive(Default, Copy, Clone, Debug)]
 pub struct IdentityHasher(u64);
 
