@@ -1,6 +1,28 @@
+mod pst;
+mod phase;
+
 use gambit_models::piece::colour::Colour;
 use gambit_models::piece::piece_type::PieceType;
 use gambit_movegen::state::State;
+use pst::pst;
+use phase::{game_phase, TOTAL_PHASE};
+
+fn bishop_pair_bonus(state: &State) -> i32 {
+    const BISHOP_PAIR_BONUS: i32 = 30;
+
+    let white_bishops = state.our_pieces(Colour::White, PieceType::Bishop).count();
+    let black_bishops = state.our_pieces(Colour::Black, PieceType::Bishop).count();
+
+    let mut bonus = 0;
+    if white_bishops >= 2 {
+        bonus += BISHOP_PAIR_BONUS;
+    }
+    if black_bishops >= 2 {
+        bonus -= BISHOP_PAIR_BONUS;
+    }
+
+    bonus
+}
 
 fn get_piece_score(piece_type: PieceType) -> i32 {
     match piece_type {
@@ -12,32 +34,38 @@ fn get_piece_score(piece_type: PieceType) -> i32 {
     }
 }
 
-fn count_material(state: &State, side: Colour) -> i32 {
-    let mut score = 0;
+fn material_and_pst(state: &State) -> (i32, i32) {
+    let mut mg = 0;
+    let mut eg = 0;
 
-    score +=
-        get_piece_score(PieceType::Pawn) * state.our_pieces(side, PieceType::Pawn).count() as i32;
-    score += get_piece_score(PieceType::Knight)
-        * state.our_pieces(side, PieceType::Knight).count() as i32;
-    score += get_piece_score(PieceType::Bishop)
-        * state.our_pieces(side, PieceType::Bishop).count() as i32;
-    score +=
-        get_piece_score(PieceType::Rook) * state.our_pieces(side, PieceType::Rook).count() as i32;
-    score +=
-        get_piece_score(PieceType::Queen) * state.our_pieces(side, PieceType::Queen).count() as i32;
+    for colour in Colour::ALL {
+        let sign = if colour == Colour::White { 1 } else { -1 };
 
-    score
+        for pt in PieceType::ALL {
+            let bitboard = state.our_pieces(colour, pt);
+
+            for square in bitboard {
+                let material = get_piece_score(pt);
+
+                mg += sign * (material + pst(pt, square, colour, false));
+                eg += sign * (material + pst(pt, square, colour, true));
+            }
+        }
+    }
+
+    (mg, eg)
 }
 
 pub fn evaluate(state: &State) -> i32 {
-    let white_eval = count_material(state, Colour::White);
-    let black_eval = count_material(state, Colour::Black);
+    let (mg, eg) = material_and_pst(state);
 
-    let perspective = if state.side_to_move() == Colour::White {
-        1
-    } else {
-        -1
-    };
+    let phase = game_phase(state);
+    let tapered = (mg * phase + eg * (TOTAL_PHASE - phase)) / TOTAL_PHASE;
 
-    (white_eval - black_eval) * perspective
+    let bishop_pair = bishop_pair_bonus(state);
+
+    let total = tapered + bishop_pair;
+
+    let perspective = if state.side_to_move() == Colour::White { 1 } else { -1 };
+    total * perspective
 }

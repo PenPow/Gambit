@@ -4,6 +4,7 @@ pub mod repetition;
 
 use crate::MATE_THRESHOLD;
 use crate::search::pv::reconstruct_pv;
+use crate::search::quiescence::quiesce;
 use crate::search::repetition::RepetitionTable;
 use crate::time_controller::TimeController;
 use crate::tt::{EntryType, TranspositionTable};
@@ -16,7 +17,6 @@ use gambit_protocol::{GoParams, SearchInfo};
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use crate::search::quiescence::quiesce;
 
 pub const MATE_VALUE: i32 = 30_000;
 const INFINITY: i32 = MATE_VALUE + 1;
@@ -212,7 +212,9 @@ fn negamax(
     }
 
     if depth == 0 {
-        return quiesce(state, tt, ply, alpha, beta, stop_flag, time_ctrl, nodes, aborted, seldepth);
+        return quiesce(
+            state, tt, ply, alpha, beta, stop_flag, time_ctrl, nodes, aborted, seldepth,
+        );
         // return evaluate(state)
     }
 

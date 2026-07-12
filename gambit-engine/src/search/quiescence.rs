@@ -1,13 +1,13 @@
-use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
+use crate::MATE_VALUE;
+use crate::eval::evaluate;
+use crate::search::{INFINITY, NODE_TIME_CHECK_INTERVAL, should_abort};
+use crate::time_controller::TimeController;
+use crate::tt::TranspositionTable;
 use gambit_movegen::generator::legal::{generate, generate_captures};
 use gambit_movegen::list::MoveList;
 use gambit_movegen::state::State;
-use crate::eval::evaluate;
-use crate::MATE_VALUE;
-use crate::search::{should_abort, INFINITY, NODE_TIME_CHECK_INTERVAL};
-use crate::time_controller::TimeController;
-use crate::tt::TranspositionTable;
+use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
 #[allow(clippy::too_many_arguments)]
 pub fn quiesce(
@@ -50,7 +50,11 @@ pub fn quiesce(
     }
 
     if list.is_empty() {
-        return if in_check { -(MATE_VALUE - ply as i32) } else { stand_pat };
+        return if in_check {
+            -(MATE_VALUE - ply as i32)
+        } else {
+            stand_pat
+        };
     }
 
     let mut best_score = if in_check { -INFINITY } else { stand_pat };
@@ -58,8 +62,16 @@ pub fn quiesce(
     for mv in list.iter().copied() {
         let undo = state.make_move(mv);
         let score = -quiesce(
-            state, tt, ply + 1, -beta, -alpha,
-            stop_flag, time_ctrl, nodes, aborted, seldepth,
+            state,
+            tt,
+            ply + 1,
+            -beta,
+            -alpha,
+            stop_flag,
+            time_ctrl,
+            nodes,
+            aborted,
+            seldepth,
         );
         state.unmake_move(mv, undo);
 
@@ -74,7 +86,7 @@ pub fn quiesce(
         if best_score > alpha {
             alpha = best_score;
         }
-        
+
         if alpha >= beta {
             break;
         }
