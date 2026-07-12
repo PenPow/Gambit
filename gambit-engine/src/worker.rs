@@ -1,3 +1,4 @@
+use crate::search::repetition::RepetitionTable;
 use crate::search::search;
 use crate::tt::TranspositionTable;
 use gambit_models::position::Position;
@@ -6,12 +7,11 @@ use gambit_notation::lan;
 use gambit_protocol::Event::BestMove;
 use gambit_protocol::{Command, EngineOption, Event, GoParams, Handshake, SetEnginePosition};
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender};
-use std::sync::Mutex;
 use std::thread;
 use std::thread::JoinHandle;
-use crate::search::repetition::RepetitionTable;
 
 pub struct Worker {
     commands: Receiver<Command>,
@@ -126,9 +126,10 @@ impl Worker {
 
                     let info_events = events.clone();
 
-                    let best_move = search(state, params, stop_flag, &mut tt_guard, history, |info| {
-                        let _ = info_events.send(Event::Info(info));
-                    });
+                    let best_move =
+                        search(state, params, stop_flag, &mut tt_guard, history, |info| {
+                            let _ = info_events.send(Event::Info(info));
+                        });
 
                     events.send(BestMove(best_move)).unwrap();
                 })

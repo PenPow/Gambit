@@ -276,6 +276,7 @@ fn build_report(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn render_analysis(
     base_identity: &str,
     head_identity: &str,
