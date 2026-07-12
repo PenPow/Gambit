@@ -15,3 +15,6 @@ gambit-models = { path = "../gambit-models" }
 gambit-movegen = { path = "../gambit-movegen", features = ["bmi2"] }
 gambit-notation = { path = "../gambit-notation", features = ["lan"] }
 gambit-protocol = { path = "../gambit-protocol" }
+
+[build-dependencies]
+gambit-models = { path = "../gambit-models" }
