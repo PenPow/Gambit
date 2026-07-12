@@ -1,0 +1,177 @@
+name: Execute Compare
+
+on:
+  workflow_dispatch:
+    inputs:
+      plan:
+        required: true
+        type: string
+        description: A stringified version of the generated plan.json
+      pr_number:
+        required: true
+        type: string
+        description: The
+      job_id:
+        required: true
+        type: string
+        description: The job id within the plan
+      head_sha:
+        required: true
+        type: string
+        description: The SHA of the head ref
+
+permissions:
+  pull-requests: write
+  checks: write
+
+env:
+  FASTCHESS_COMMIT: 838db6a53fd02e0ffeb2ddcca76e5ad2c0774661
+
+jobs:
+  compare:
+    runs-on: self-hosted
+    timeout-minutes: 2880
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Cache fastchess build
+        id: fastchess-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/fastchess-bin
+          key: fastchess-${{ env.FASTCHESS_COMMIT }}-${{ runner.os }}
+
+      - name: Build fastchess from source
+        if: steps.fastchess-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          
+          # ubuntu-latest ships GCC, but confirm it meets fastchess's
+          # minimum (GCC >= 7.3.0) rather than assuming.
+          if ! command -v g++ >/dev/null; then
+            sudo apt-get update -y
+            sudo apt-get install -y build-essential
+          fi
+          
+          git clone https://github.com/Disservin/fastchess.git fastchess-src
+          cd fastchess-src
+          git checkout "${{ env.FASTCHESS_COMMIT }}"
+          
+          make -j"$(nproc)"
+          
+          mkdir -p ~/fastchess-bin
+          install -m 755 ./fastchess ~/fastchess-bin/fastchess
+
+      - name: Install fastchess to PATH
+        run: |
+          sudo install -m 755 ~/fastchess-bin/fastchess /usr/local/bin/fastchess
+          fastchess --version
+
+      - name: Run Compare
+        id: compare
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_API_URL: ${{ github.api_url }}
+        run: |
+          PLAN='${{ inputs.plan }}'
+          
+          # Find the compare job matching job_id
+          BASE=$(echo "$PLAN" | jq -r --arg id '${{ inputs.job_id }}' '.jobs[] | select(.id == $id) | .kind.Compare.base')
+          HEAD=$(echo "$PLAN" | jq -r --arg id '${{ inputs.job_id }}' '.jobs[] | select(.id == $id) | .kind.Compare.head')
+          GAMES=$(echo "$PLAN" | jq -r --arg id '${{ inputs.job_id }}' '.jobs[] | select(.id == $id) | .kind.Compare.games // empty')
+          TIME_CONTROL=$(echo "$PLAN" | jq -r --arg id '${{ inputs.job_id }}' '.jobs[] | select(.id == $id) | .kind.Compare.time_control // empty')
+          CONCURRENCY=$(echo "$PLAN" | jq -r --arg id '${{ inputs.job_id }}' '.jobs[] | select(.id == $id) | .kind.Compare.concurrency // empty')
+          MIN_MEANINGFUL=$(echo "$PLAN" | jq -r --arg id '${{ inputs.job_id }}' '.jobs[] | select(.id == $id) | .kind.Compare.min_meaningful_elo // empty')
+
+          ARGS=""
+          [ -n "$GAMES" ] && ARGS="$ARGS --games $GAMES"
+          [ -n "$TIME_CONTROL" ] && ARGS="$ARGS --time-control $TIME_CONTROL"
+          [ -n "$CONCURRENCY" ] && ARGS="$ARGS --concurrency $CONCURRENCY"
+          [ -n "$MIN_MEANINGFUL" ] && ARGS="$ARGS --min-meaningful-elo $MIN_MEANINGFUL"
+
+          cargo run -p gambit-tools -- compare "$BASE" "$HEAD" $ARGS --json > compare_result.json
+          
+          cat compare_result.json
+
+      - name: Post PR comment (success)
+        if: success()
+        uses: actions/github-script@v9
+        with:
+          script: |            
+            const prNumber = parseInt('${{ inputs.pr_number }}');
+            const jobId = '${{ inputs.job_id }}';
+            
+            let result;
+
+            const fs = require("fs");
+            try {
+              result = JSON.parse(fs.readFileSync("compare_result.json", "utf8"));
+            } catch {
+              result = undefined;
+            }
+            
+            let md = result ? result.analysis : "No result data.";
+            md += `\n---\n`;
+            md += `_Triggered by PR comment · [Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})_`;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: md
+            });
+
+      - name: Post PR comment (failure)
+        if: failure()
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const prNumber = parseInt('${{ inputs.pr_number }}');
+            
+            let md = "There was an issue running the comparison."
+            md += `\n---\n`;
+            md += `_Triggered by PR comment · [Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})_`;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: md
+            });
+
+      - name: Update check status
+        if: always()
+        uses: actions/github-script@v9
+        with:
+          script: |
+            let result;
+
+            const fs = require("fs");
+            try {
+              result = JSON.parse(fs.readFileSync("compare_result.json", "utf8"));
+            } catch {
+              result = undefined;
+            }
+            
+            let checkName = "Compare";
+            if (result) {
+              checkName = `Compare: ${result.head_identity} vs ${result.base_identity}`;
+            }
+            
+            await github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: checkName,
+              head_sha: '${{ inputs.head_sha }}',
+              status: 'completed',
+              conclusion: result ? 'success' : 'failure',
+              output: {
+                title: checkName,
+                summary: result
+                  ? `Elo: ${result.elo_diff.toFixed(1)} ± ${result.elo_confidence_half_width.toFixed(1)} | ${result.is_meaningful ? 'Meaningful' : 'Not meaningful'}`
+                  : 'Compare failed to run'
+              }
+            });

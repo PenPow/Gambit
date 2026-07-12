@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="EMPTY_MODULE" version="4">
+  <component name="NewModuleRootManager">
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/gambit-engine/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/gambit-models/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/gambit-movegen/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/gambit-protocol/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/gambit-uci/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/gambit/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/gambit-models/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/gambit-notation/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/gambit-movegen/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/gambit-perft/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/gambit-tools/src" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/target" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>

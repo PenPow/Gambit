@@ -1,0 +1,200 @@
+name: gambot dispatch
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  actions: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+      pr_number: ${{ steps.check.outputs.pr_number }}
+    steps:
+      - id: check
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const comment = context.payload.comment.body;
+            const author = context.payload.sender.login;
+            const isPr = !!context.payload.issue.pull_request;
+            
+            if(!isPr || !comment.includes("/gambot")) {
+              core.setOutput('should_run', 'false');
+              core.setOutput('pr_number', '0');
+            
+              console.log(isPr);
+              console.log(comment.includes("/gambot"));
+              
+              return;
+            }
+            
+            try {
+              await github.rest.repos.checkCollaborator({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                username: author
+              });
+            } catch (e) {
+              core.setOutput('should_run', 'false');
+              core.setOutput('pr_number', '0');
+            
+              console.log(e);
+            
+              return;
+            }
+            
+            core.setOutput('should_run', true);
+            core.setOutput('pr_number', context.issue.number.toString());
+  parse:
+    runs-on: ubuntu-latest
+    if: needs.check.outputs.should_run == 'true'
+    needs: check
+    outputs:
+      job_kinds: ${{ steps.parse.outputs.job_kinds }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - id: pr_info
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+            
+            core.setOutput('base_ref', pr.base.ref);
+            core.setOutput('head_ref', pr.head.ref);
+
+      - id: parse
+        name: Produce plan.json
+        env:
+          GAMBIT_BASE_REF: ${{ steps.pr_info.outputs.base_ref }}
+          GAMBIT_HEAD_REF: ${{ steps.pr_info.outputs.head_ref }}
+        run: |
+          printf '%s' '${{ github.event.comment.body }}' > comment.txt
+          
+          cargo run -p gambit-tools -- plan comment.txt > plan.json
+          
+          cat plan.json
+          
+          job_kinds=$(cat plan.json | jq -r '[.jobs[].kind | keys[0]] | unique | join(",")')
+          
+          echo "job_kinds=$job_kinds" >> $GITHUB_OUTPUT
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: plan
+          path: plan.json
+          retention-days: 1
+
+  dispatch:
+    needs: [check, parse]
+    if: needs.check.outputs.should_run == 'true' && needs.check.outputs.pr_number != '0'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v7
+        with:
+          name: plan
+
+      - uses: actions/github-script@v9
+        with:
+            script: |
+              const fs = require('fs');
+              
+              const plan = JSON.parse(fs.readFileSync('plan.json', 'utf8'));
+              const prNumber = parseInt('${{ needs.check.outputs.pr_number }}');
+              
+              const owner = context.repo.owner;
+              const repo = context.repo.repo;
+              
+              const { data: pr } = await github.rest.pulls.get({
+                owner,
+                repo,
+                pull_number: prNumber,
+              });
+              
+              const headSha = pr.head.sha;
+              const headRef = pr.head.ref;
+              
+              function describeJob(job) {
+                const kind = Object.keys(job.kind)[0];
+                const params = job.kind[kind];
+              
+                if (kind === 'Compare') {
+                  return `base \`${params.base}\` vs head \`${params.head}\``;
+                }
+              
+                if (kind === 'Perft') {
+                  return `depth \`${params.depth}\``;
+                }
+              
+                return '';
+              }
+              
+              
+              const workflowMap = {
+                'Perft': 'perft.yml',
+                'Compare': 'compare.yml',
+              };
+              
+              const dispatched = [];
+              
+              for (const job of plan.jobs) {
+                const kind = Object.keys(job.kind)[0];
+                const workflow = workflowMap[kind];
+                
+                if (!workflow) continue;
+                
+                await github.rest.actions.createWorkflowDispatch({
+                  owner,
+                  repo,
+                  workflow_id: workflow,
+                  ref: headRef,
+                  inputs: {
+                    plan: JSON.stringify(plan),
+                    pr_number: prNumber.toString(),
+                    job_id: job.id,
+                    head_sha: headSha
+                  }
+                });
+                
+                dispatched.push({ job, kind, workflow, detail: describeJob(job) });
+              }
+              
+              console.log('Dispatched:', dispatched.map(d => `${d.job.id} → ${d.workflow}`).join(', '));
+              
+              let md = `### Job Dispatch\n\n`;
+              
+              if (dispatched.length > 0) {
+                md += `Dispatched **${dispatched.length}** job(s):\n\n`;
+                md += `| Job | Kind | Details |\n`;
+                md += `|---|---|---|\n`;
+                for (const d of dispatched) {
+                  md += `| \`${d.job.id}\` | ${d.kind} | ${d.detail} |\n`;
+                }
+                md += `\n`;
+              } else {
+                md += `No jobs were dispatched.\n\n`;
+              }
+
+              md += `---\n`;
+              md += `_Triggered by PR comment · head \`${headRef}\` @ \`${headSha.substring(0, 7)}\` · [Run](https://github.com/${owner}/${repo}/actions/runs/${context.runId})_`;
+              
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: prNumber,
+                body: md
+              });

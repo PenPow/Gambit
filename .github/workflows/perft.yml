@@ -1,0 +1,180 @@
+name: Execute Perft
+
+on:
+  workflow_dispatch:
+    inputs:
+      plan:
+        required: true
+        type: string
+        description: A stringified version of the generated plan.json
+      pr_number:
+        required: true
+        type: string
+        description: The
+      job_id:
+        required: true
+        type: string
+        description: The job id within the plan
+      head_sha:
+        required: true
+        type: string
+        description: The SHA of the head ref
+
+permissions:
+  pull-requests: write
+  checks: write
+
+jobs:
+  perft:
+    runs-on: self-hosted
+    timeout-minutes: 2880
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Run Perft
+        id: perft
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_API_URL: ${{ github.api_url }}
+        run: |
+          PLAN='${{ inputs.plan }}'
+          JOB_ID='${{ inputs.job_id }}'
+          
+          DEPTH=$(echo "$PLAN" | jq -r --arg id "$JOB_ID" '.jobs[] | select(.id == $id) | .kind.Perft.depth')
+          EXCLUDE=$(echo "$PLAN" | jq -r --arg id "$JOB_ID" '.jobs[] | select(.id == $id) | .kind.Perft.exclude // [] | join(",")')
+          
+          if [ -n "$EXCLUDE" ]; then
+            EXCLUDE_ARGS=$(echo "$EXCLUDE" | tr ',' ' ' | sed 's/[^ ]*/--exclude &/g')
+          else
+            EXCLUDE_ARGS=""
+          fi
+          
+          cargo run -p gambit-tools -- perft "$DEPTH" $EXCLUDE_ARGS --json > perft_result.json
+          echo "result<<EOF" >> "$GITHUB_OUTPUT"
+          cat perft_result.json >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Post PR comment (success)
+        if: success()
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            
+            const prNumber = parseInt('${{ inputs.pr_number }}');
+            const jobId = '${{ inputs.job_id }}';
+            
+            const result = JSON.parse(fs.readFileSync('perft_result.json', 'utf8'));
+            
+            const groups = result.tests.map(test => {
+              const passed = test.results.filter(r => r.is_success);
+              const failed = test.results.filter(r => !r.is_success);
+            
+              return {
+                name: test.name,
+                passed,
+                failed,
+                all: test.results
+              };
+            });
+            
+            const header = result.success
+              ? `## ✅ All Perft Tests Passed`
+              : `## ❌ Some Perft Tests Failed`;
+            
+            let md = `${header}\n\n`;
+            md += `- Job: \`${jobId}\`\n`;
+            md += `- Total time: **${result.total_time_ms.toFixed(6)} ms**\n\n`;
+            
+            function renderTable(rows) {
+              let out = `| Depth | Nodes | Expected | Elapsed (ms) | MNPS | |\n`;
+              out += `|------:|------:|----------:|--------------:|-----:|:-:|\n`;
+              for (const r of rows) {
+                const icon = r.is_success ? "✅" : "❌";
+                out += `| ${r.depth} | ${r.nodes} | ${r.expected} | ${r.elapsed_ms.toFixed(6)} | ${r.mnps.toFixed(6)} | ${icon} |\n`;
+              }
+              return out;
+            }
+            
+            for(const g of groups) {
+              md += `### ${g.name}\n\n`;
+            
+              if(g.failed.length > 0) {
+                md += "❌ **Failing**\n\n"
+                md += renderTable(g.failed);
+                md += `\n`;
+              }
+            
+              if(g.passed.length > 0) {
+                md += `<details>\n<summary>✅ Passed (${g.passed.length})</summary>\n\n`;
+                md += '<br>\n\n'
+                md += renderTable(g.passed);
+                md += `\n</details>\n\n`;
+              }
+            }
+            
+            md += `\n---\n\n### Summary\n`;
+            md += `- Tests: ${result.tests.length}\n`;
+            md += `- Total checks: ${groups.reduce((a, g) => a + g.all.length, 0)}\n`;
+            md += `- Failed groups: ${groups.filter(g => g.failed.length > 0).length}\n`;
+            md += `---\n`;
+            md += `_Triggered by PR comment · [Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})_`;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: md
+            });
+
+      - name: Post PR comment (failure)
+        if: failure()
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const prNumber = parseInt('${{ inputs.pr_number }}');
+            
+            let md = "There was an issue running the perft tests!"
+            md += `\n---\n`;
+            md += `_Triggered by PR comment · [Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})_`;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: md
+            });
+
+      - name: Update check status
+        if: always()
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const jobId = '${{ inputs.job_id }}';
+            
+            let result;
+
+            const fs = require("fs");
+            try {
+              result = JSON.parse(fs.readFileSync("perft_result.json", "utf8"));
+            } catch {
+              result = { success: false };
+            }
+  
+            await github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: `Perft Results (${jobId})`,
+              head_sha: '${{ inputs.head_sha }}',
+              status: 'completed',
+              conclusion: result.success ? 'success' : 'failure',
+              output: {
+                title: 'Perft',
+                summary: result.success
+                  ? 'All perft tests passed.'
+                    : 'Some perft tests failed.'
+              }
+            });
