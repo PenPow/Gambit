@@ -1,0 +1,22 @@
+[package]
+name = "gambit-movegen"
+version = "0.1.0"
+description = "Move generation for chess engines"
+categories = ["games"]
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+keywords = ["chess", "movegen", "chess-engines"]
+
+[dependencies]
+gambit-models = { path = "../gambit-models" }
+thiserror = "2.0.18"
+
+[build-dependencies]
+gambit-models = { path = "../gambit-models" }
+
+[features]
+bmi2 = []

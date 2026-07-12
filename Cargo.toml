@@ -1,0 +1,12 @@
+[workspace]
+resolver = "3"
+members = ["gambit", "gambit-engine", "gambit-models", "gambit-movegen", "gambit-notation", "gambit-perft", "gambit-protocol", "gambit-tools", "gambit-uci"]
+
+[workspace.package]
+authors = ["Joshua Clements", "Gambit Contributors"]
+edition = "2024"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/PenPow/Gambit"
+rust-version = "1.85.0"
+homepage = "https://gambit.penpow.dev"
+keywords = ["chess", "movegen", "chess-engine"]

@@ -1,0 +1,15 @@
+[package]
+name = "gambit-protocol"
+version = "0.1.0"
+description = "A common chess communication protocol for chess engines"
+categories = ["games"]
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+keywords = ["chess", "communication", "chess-engines"]
+
+[dependencies]
+gambit-models = { path = "../gambit-models" }

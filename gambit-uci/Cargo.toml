@@ -1,0 +1,18 @@
+[package]
+name = "gambit-uci"
+version = "0.1.0"
+description = "A UCI frontend for chess engines"
+categories = ["games"]
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+keywords = ["chess", "communication", "chess-engines", "uci"]
+
+[dependencies]
+gambit-models = { path = "../gambit-models" }
+gambit-notation = { path = "../gambit-notation", features = ["fen"] }
+gambit-protocol = { path = "../gambit-protocol" }
+gambit-engine = { path = "../gambit-engine" }

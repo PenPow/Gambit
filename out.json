@@ -1,0 +1,13 @@
+{
+  "jobs": [
+    {
+      "id": "compare-main-vs-HEAD",
+      "kind": {
+        "Compare": {
+          "base": "main",
+          "head": "HEAD"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+[package]
+name = "gambit-models"
+version = "0.1.0"
+description = "Core types and primitives for building chess engines — bitboards, squares, moves, and pieces"
+categories = ["data-structures"]
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+keywords = ["chess", "bitboard", "chess-engine", "game"]
+
+[dependencies]
+thiserror = "2.0.18"
+colored = { version = "3.1.1", optional = true }
+bitflags = "2.13.0"
+
+[features]
+colored = ["dep:colored"]
+
+[dev-dependencies]
+criterion = { version = "0.8.2", features = ["html_reports"]}
+
+[[bench]]
+name = "bitboard"
+harness = false
+
+[[bench]]
+name = "movement"
+harness = false
+
+[[bench]]
+name = "moves"
+harness = false
+
+[[bench]]
+name = "pieces"
+harness = false
+
+[[bench]]
+name = "locations"
+harness = false

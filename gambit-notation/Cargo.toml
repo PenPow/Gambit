@@ -1,0 +1,21 @@
+[package]
+name = "gambit-notation"
+version = "0.1.0"
+categories = ["parsing"]
+description = "Notation parsers for building chess engines"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+keywords = ["chess", "notation", "chess-engine", "game"]
+
+[dependencies]
+gambit-models = { path = "../gambit-models" }
+gambit-movegen = { path = "../gambit-movegen", optional = true }
+thiserror = "2.0.18"
+
+[features]
+fen = []
+lan = ["dep:gambit-movegen"]

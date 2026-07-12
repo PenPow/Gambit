@@ -1,0 +1,16 @@
+[package]
+name = "gambit"
+version = "0.1.0"
+description = "The binary for the gambit chess engine"
+categories = ["games"]
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+keywords = ["chess", "chess-engines"]
+
+[dependencies]
+gambit-engine = { path = "../gambit-engine" }
+gambit-uci = { path = "../gambit-uci" }

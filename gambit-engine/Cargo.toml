@@ -1,0 +1,17 @@
+[package]
+name = "gambit-engine"
+description = "Search and evaluation for the gambit chess engine."
+categories = ["games"]
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+keywords = ["chess", "chess-engines"]
+
+[dependencies]
+gambit-models = { path = "../gambit-models" }
+gambit-movegen = { path = "../gambit-movegen", features = ["bmi2"] }
+gambit-notation = { path = "../gambit-notation", features = ["lan"] }
+gambit-protocol = { path = "../gambit-protocol" }
