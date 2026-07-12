@@ -3,6 +3,7 @@ mod phase;
 mod pawns;
 mod tables;
 mod king_safety;
+mod mobility;
 
 use gambit_models::piece::colour::Colour;
 use gambit_models::piece::piece_type::PieceType;
@@ -10,6 +11,7 @@ use gambit_movegen::state::State;
 use pst::pst;
 use phase::{game_phase, TOTAL_PHASE};
 use crate::eval::king_safety::king_safety;
+use crate::eval::mobility::mobility;
 use crate::eval::pawns::pawn_structure;
 
 fn bishop_pair_bonus(state: &State) -> i32 {
@@ -70,8 +72,9 @@ pub fn evaluate(state: &State) -> i32 {
     let bishop_pair = bishop_pair_bonus(state);
     let pawns = pawn_structure(state);
     let king_safety = king_safety(state);
+    let mobility = mobility(state);
 
-    let total = tapered + bishop_pair + pawns + king_safety;
+    let total = tapered + bishop_pair + pawns + king_safety + mobility;
 
     let perspective = if state.side_to_move() == Colour::White { 1 } else { -1 };
     total * perspective

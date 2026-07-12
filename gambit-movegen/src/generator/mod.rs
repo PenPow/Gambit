@@ -6,6 +6,7 @@ use gambit_models::piece::colour::Colour;
 
 pub mod legal;
 mod piece;
+pub mod pseudo_legal;
 
 #[derive(Debug, Copy, Clone)]
 pub(crate) struct Context {
