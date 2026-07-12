@@ -1,7 +1,11 @@
 mod pv;
+mod quiescence;
 pub mod repetition;
 
-use crate::eval::evaluate;
+use crate::MATE_THRESHOLD;
+use crate::search::pv::reconstruct_pv;
+use crate::search::quiescence::quiesce;
+use crate::search::repetition::RepetitionTable;
 use crate::time_controller::TimeController;
 use crate::tt::{EntryType, TranspositionTable};
 use gambit_models::location::square::Square;
@@ -13,9 +17,6 @@ use gambit_protocol::{GoParams, SearchInfo};
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use crate::MATE_THRESHOLD;
-use crate::search::pv::reconstruct_pv;
-use crate::search::repetition::RepetitionTable;
 
 pub const MATE_VALUE: i32 = 30_000;
 const INFINITY: i32 = MATE_VALUE + 1;
@@ -52,7 +53,6 @@ pub fn search(
     }
 
     let mut best_move: Option<Move> = root_list.iter().next().copied();
-    best_move?;
 
     let mut nodes: u64 = 0;
     let mut depth = 1;
@@ -85,9 +85,19 @@ pub fn search(
             }
 
             let score = make_move_and_search(
-                &mut state, tt, &mut history, mv,
-                depth - 1, 1, alpha, beta,
-                &stop_flag, &time_ctrl, &mut nodes, &mut aborted, &mut seldepth,
+                &mut state,
+                tt,
+                &mut history,
+                mv,
+                depth - 1,
+                1,
+                alpha,
+                beta,
+                &stop_flag,
+                &time_ctrl,
+                &mut nodes,
+                &mut aborted,
+                &mut seldepth,
             );
 
             if aborted {
@@ -108,13 +118,16 @@ pub fn search(
             if let Some(mv) = best_mv {
                 best_move = Some(mv);
 
-                tt.store(state.hash(), depth as u16, 0, best_score, mv, EntryType::Exact);
-
-                let pv = reconstruct_pv(
-                    &mut state,
-                    tt,
-                    depth,
+                tt.store(
+                    state.hash(),
+                    depth as u16,
+                    0,
+                    best_score,
+                    mv,
+                    EntryType::Exact,
                 );
+
+                let pv = reconstruct_pv(&mut state, tt, depth);
 
                 info(SearchInfo {
                     depth: Some(depth),
@@ -138,8 +151,6 @@ pub fn search(
         if aborted || should_abort(nodes, &stop_flag, &time_ctrl) {
             break;
         }
-
-        depth += 1;
     }
 
     best_move
@@ -177,7 +188,9 @@ fn negamax(
     let hash = state.hash();
     let halfmove_clock = state.position().halfmove_clock;
 
-    if halfmove_clock.value() >= 4 && (halfmove_clock.is_fifty_move_draw() || history.is_repeated(hash)) {
+    if halfmove_clock.value() >= 4
+        && (halfmove_clock.is_fifty_move_draw() || history.is_repeated(hash))
+    {
         return 0;
     }
 
@@ -199,7 +212,10 @@ fn negamax(
     }
 
     if depth == 0 {
-        return evaluate(state);
+        return quiesce(
+            state, tt, ply, alpha, beta, stop_flag, time_ctrl, nodes, aborted, seldepth,
+        );
+        // return evaluate(state)
     }
 
     let tt_move = tt.probe_move(hash);
@@ -305,7 +321,7 @@ fn make_move_and_search(
 
 fn ordered_moves<'a>(list: &'a MoveList, tt_move: Option<Move>) -> impl Iterator<Item = Move> + 'a {
     let tt_move = tt_move.filter(|mv| list.iter().any(|m| m == mv));
-    
+
     tt_move
         .into_iter()
         .chain(list.iter().copied().filter(move |mv| Some(*mv) != tt_move))

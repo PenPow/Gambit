@@ -5,7 +5,7 @@ use crate::state::State;
 use gambit_models::moves::builder::MoveBuilder;
 use gambit_models::piece::piece_type::PieceType;
 
-pub(crate) fn generate(state: &State, ctx: &Context, list: &mut MoveList) {
+pub(crate) fn generate(state: &State, ctx: &Context, list: &mut MoveList, captures_only: bool) {
     // exclude pinned knights
     let knights = state.our_pieces(ctx.us, PieceType::Knight) & !ctx.pinned;
 
@@ -16,7 +16,7 @@ pub(crate) fn generate(state: &State, ctx: &Context, list: &mut MoveList) {
             if ctx.enemy.contains(to) {
                 let captured = state.piece_at(to).piece_type().unwrap();
                 list.push(MoveBuilder::capture(from, to, PieceType::Knight, captured).build());
-            } else {
+            } else if !captures_only {
                 list.push(MoveBuilder::quiet(from, to, PieceType::Knight).build());
             }
         }

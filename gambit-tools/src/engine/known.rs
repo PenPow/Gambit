@@ -26,7 +26,7 @@ fn known_engines() -> &'static [(&'static str, KnownEngine)] {
 pub fn build_named_engine(name_spec: &str) -> anyhow::Result<EngineHandle> {
     let (name, pinned_ref) = match name_spec.split_once('@') {
         Some((n, r)) => (n, Some(r)),
-        None => (name_spec.as_ref(), None),
+        None => (name_spec, None),
     };
 
     let Some((_, known)) = known_engines().iter().find(|(n, _)| *n == name) else {

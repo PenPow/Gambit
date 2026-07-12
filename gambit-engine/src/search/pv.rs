@@ -1,9 +1,9 @@
-use std::collections::HashSet;
+use crate::tt::TranspositionTable;
 use gambit_models::moves::Move;
 use gambit_movegen::generator::legal::generate;
 use gambit_movegen::list::MoveList;
 use gambit_movegen::state::State;
-use crate::tt::TranspositionTable;
+use std::collections::HashSet;
 
 pub fn reconstruct_pv(state: &mut State, tt: &TranspositionTable, max_len: u32) -> Vec<Move> {
     let mut pv = Vec::new();
