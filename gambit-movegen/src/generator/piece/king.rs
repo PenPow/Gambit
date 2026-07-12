@@ -9,7 +9,7 @@ use gambit_models::moves::builder::MoveBuilder;
 use gambit_models::piece::colour::Colour;
 use gambit_models::piece::piece_type::PieceType;
 
-pub(crate) fn generate(state: &State, ctx: &Context, list: &mut MoveList) {
+pub(crate) fn generate(state: &State, ctx: &Context, list: &mut MoveList, captures_only: bool) {
     let from = ctx.king_square;
 
     let occupancy_without_king = Bitboard::new(ctx.occupancy.bits() & !(1u64 << from.bits()));
@@ -21,13 +21,13 @@ pub(crate) fn generate(state: &State, ctx: &Context, list: &mut MoveList) {
             if ctx.enemy.contains(to) {
                 let captured = state.piece_at(to).piece_type().unwrap();
                 list.push(MoveBuilder::capture(from, to, PieceType::King, captured).build());
-            } else {
+            } else if !captures_only {
                 list.push(MoveBuilder::quiet(from, to, PieceType::King).build());
             }
         }
     }
 
-    if ctx.check_count == 0 {
+    if !captures_only && ctx.check_count == 0 {
         generate_castling(state, ctx, list);
     }
 }

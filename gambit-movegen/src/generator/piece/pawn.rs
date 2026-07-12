@@ -47,7 +47,7 @@ fn push_promotion_captures(list: &mut MoveList, from: Square, to: Square, captur
     }
 }
 
-pub(crate) fn generate(state: &State, ctx: &Context, list: &mut MoveList) {
+pub(crate) fn generate(state: &State, ctx: &Context, list: &mut MoveList, captures_only: bool) {
     let offset = push_offset(ctx.us);
 
     let pawns = state.our_pieces(ctx.us, PieceType::Pawn);
@@ -59,7 +59,9 @@ pub(crate) fn generate(state: &State, ctx: &Context, list: &mut MoveList) {
             Bitboard::UNIVERSE
         };
 
-        generate_pushes(ctx, list, from, offset, pin_line);
+        if !captures_only {
+            generate_pushes(ctx, list, from, offset, pin_line);
+        }
         generate_captures(state, ctx, list, from, pin_line);
         generate_en_passant(state, ctx, list, from, offset, pin_line);
     }
@@ -106,7 +108,7 @@ fn generate_pushes(
     }
 }
 
-fn generate_captures(
+pub(crate) fn generate_captures(
     state: &State,
     ctx: &Context,
     list: &mut MoveList,
