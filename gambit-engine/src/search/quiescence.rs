@@ -9,6 +9,7 @@ use crate::search::{should_abort, INFINITY, NODE_TIME_CHECK_INTERVAL};
 use crate::time_controller::TimeController;
 use crate::tt::TranspositionTable;
 
+#[allow(clippy::too_many_arguments)]
 pub fn quiesce(
     state: &mut State,
     tt: &mut TranspositionTable,

@@ -1,42 +1,30 @@
-use std::collections::HashMap;
-use std::hash::{BuildHasherDefault, Hasher};
-
 // TODO:
 // Determine whether this is providing an ELO boost or not
 
-#[derive(Default, Copy, Clone, Debug)]
-pub struct IdentityHasher(u64);
-
-impl Hasher for IdentityHasher {
-    #[inline]
-    fn finish(&self) -> u64 {
-        self.0
-    }
-
-    fn write(&mut self, _: &[u8]) {
-        panic!("IdentityHasher only supports u64 keys via write_u64")
-    }
-
-    #[inline]
-    fn write_u64(&mut self, i: u64) {
-        self.0 = i;
-    }
+#[derive(Debug, Clone)]
+pub struct RepetitionTable {
+    entries: [RepetitionEntry; RepetitionTable::CAPACITY],
+    len: usize,
 }
 
-type IdentityHashMap = HashMap<u64, u8, BuildHasherDefault<IdentityHasher>>;
-
-#[derive(Debug, Default, Clone)]
-pub struct RepetitionTable {
-    map: IdentityHashMap,
+#[derive(Debug, Clone, Copy)]
+struct RepetitionEntry {
+    hash: u64,
+    count: u8,
 }
 
 impl RepetitionTable {
+    const CAPACITY: usize = 4096;
+
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            entries: [RepetitionEntry { hash: 0, count: 0 }; RepetitionTable::CAPACITY],
+            len: 0,
+        }
     }
 
     pub fn from_history(hashes: impl IntoIterator<Item = u64>) -> Self {
-        let mut table = Self::default();
+        let mut table = Self::new();
         table.fill(hashes);
 
         table
@@ -49,20 +37,36 @@ impl RepetitionTable {
     }
 
     pub fn push(&mut self, hash: u64) {
-        *self.map.entry(hash).or_insert(0) += 1;
+        for entry in &mut self.entries[..self.len] {
+            if entry.hash == hash {
+                entry.count += 1;
+                return;
+            }
+        }
+
+        if self.len < self.entries.len() {
+            self.entries[self.len] = RepetitionEntry { hash, count: 1 };
+            self.len += 1;
+        }
     }
 
     pub fn pop(&mut self, hash: u64) {
-        if let Some(count) = self.map.get_mut(&hash) {
-            *count -= 1;
-            if *count == 0 {
-                self.map.remove(&hash);
+        for entry in &mut self.entries[..self.len] {
+            if entry.hash == hash {
+                entry.count -= 1;
+                if entry.count == 0 {
+                    self.entries[self.len - 1] = RepetitionEntry { hash: 0, count: 0 };
+                    self.len -= 1;
+                }
+                return;
             }
         }
     }
 
     #[inline]
     pub fn is_repeated(&self, hash: u64) -> bool {
-        self.map.get(&hash).is_some_and(|&count| count > 1)
+        self.entries[..self.len]
+            .iter()
+            .any(|entry| entry.hash == hash && entry.count > 1)
     }
 }

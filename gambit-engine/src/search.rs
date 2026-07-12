@@ -53,7 +53,6 @@ pub fn search(
     }
 
     let mut best_move: Option<Move> = root_list.iter().next().copied();
-    best_move?;
 
     let mut nodes: u64 = 0;
     let mut depth = 1;
@@ -152,8 +151,6 @@ pub fn search(
         if aborted || should_abort(nodes, &stop_flag, &time_ctrl) {
             break;
         }
-
-        depth += 1;
     }
 
     best_move
@@ -216,6 +213,7 @@ fn negamax(
 
     if depth == 0 {
         return quiesce(state, tt, ply, alpha, beta, stop_flag, time_ctrl, nodes, aborted, seldepth);
+        // return evaluate(state)
     }
 
     let tt_move = tt.probe_move(hash);
